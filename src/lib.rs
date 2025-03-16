@@ -15,14 +15,14 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-pub use macros::sid_iter;
+pub use sid_macros::sid_iter;
 
 /// Creates a SID from a string literal at compile time
 /// 
 /// # Examples
 /// 
 /// ```
-/// use sid::sid;
+/// use sid::{SID, sid};
 /// 
 /// const PLAYER_ID: SID = sid!("Player");
 /// ```
@@ -53,6 +53,7 @@ fn sid_lookup() -> &'static SIDMap {
 }
 
 fn sid_check(reference: &'static SIDMap) {
+    let _reference = reference;
     let _x: SIDHashInteger = 5;
     NonZeroSIDHashInteger::try_from(5).unwrap();
     assert!(
@@ -66,61 +67,13 @@ fn sid_check(reference: &'static SIDMap) {
                                                          // SID_LOOKUP can only be set once")
 }
 
-pub fn sid_try_init(reference: &'static SIDMap) -> Result<(), SIDError> {
-    let _x: SIDHashInteger = 5;
-    NonZeroSIDHashInteger::try_from(5).unwrap();
-    assert!(
-        std::mem::size_of::<SIDHashInteger>()
-            == std::mem::size_of::<Option<NonZeroSIDHashInteger>>()
-    );
-    assert!(std::mem::size_of::<SIDHashInteger>() <= 16); // at most 16 bytes since that is output
-    assert!(std::mem::size_of::<SIDHashInteger>() >= 8); // at least 8 bytes since we need that
-                                                         // much for fn first_64_bits()
-    match SID_LOOKUP.set(reference) {
-        Ok(()) => Ok(()),
-        Err(_) => Err(SIDError::InitMultipleTimes),
-    }
-    //.expect("SID_LOOKUP can only be set once")
-}
-
-pub fn sid_get_or_init() -> &'static SIDMap {
-    SID_LOOKUP.get_or_init(|| {
-        let boxed = Box::<SIDMap>::default();
-        let static_ref: &'static _ = Box::leak(boxed);
-        sid_check(static_ref);
-        static_ref
-    })
-}
-
-#[derive(Debug, Error)]
-pub enum SIDError {
-    #[error("SIDMap has already been set")]
-    InitMultipleTimes,
-}
-
-#[allow(unused_must_use)]
-#[doc(hidden)]
-#[cfg(debug_assertions)]
-pub fn sid_init_for_tests() {
-    let _x: SIDHashInteger = 5;
-    NonZeroSIDHashInteger::try_from(5).unwrap();
-    assert!(std::mem::size_of::<SIDHashInteger>() <= 16);
-    assert!(std::mem::size_of::<SIDHashInteger>() >= 8);
-    assert!(
-        std::mem::size_of::<SIDHashInteger>()
-            == std::mem::size_of::<Option<NonZeroSIDHashInteger>>()
-    );
-    static TEST_SID_MAP: OnceCell<SIDMap> = OnceCell::new();
-    SID_LOOKUP.set(TEST_SID_MAP.get_or_init(SIDMap::default));
-}
-
 /// A string hash or String ID
 /// Used for fast (single integer) equality comparisons with guaranteed uniqueness, checked globally against other SIDs
 /// at hash-time
 #[cfg_attr(
     feature = "bevy",
     derive(Reflect, FromReflect),
-    reflect_value(PartialEq, Serialize, Deserialize, Hash)
+    reflect(opaque)
 )]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(from = "String")]
@@ -198,6 +151,55 @@ impl SID {
         }
     }
 }
+
+pub fn sid_try_init(reference: &'static SIDMap) -> Result<(), SIDError> {
+    let _x: SIDHashInteger = 5;
+    NonZeroSIDHashInteger::try_from(5).unwrap();
+    assert!(
+        std::mem::size_of::<SIDHashInteger>()
+            == std::mem::size_of::<Option<NonZeroSIDHashInteger>>()
+    );
+    assert!(std::mem::size_of::<SIDHashInteger>() <= 16); // at most 16 bytes since that is output
+    assert!(std::mem::size_of::<SIDHashInteger>() >= 8); // at least 8 bytes since we need that
+                                                         // much for fn first_64_bits()
+    match SID_LOOKUP.set(reference) {
+        Ok(()) => Ok(()),
+        Err(_) => Err(SIDError::InitMultipleTimes),
+    }
+    //.expect("SID_LOOKUP can only be set once")
+}
+
+pub fn sid_get_or_init() -> &'static SIDMap {
+    SID_LOOKUP.get_or_init(|| {
+        let boxed = Box::<SIDMap>::default();
+        let static_ref: &'static _ = Box::leak(boxed);
+        sid_check(static_ref);
+        static_ref
+    })
+}
+
+#[derive(Debug, Error)]
+pub enum SIDError {
+    #[error("SIDMap has already been set")]
+    InitMultipleTimes,
+}
+
+#[allow(unused_must_use)]
+#[doc(hidden)]
+#[cfg(debug_assertions)]
+pub fn sid_init_for_tests() {
+    let _x: SIDHashInteger = 5;
+    NonZeroSIDHashInteger::try_from(5).unwrap();
+    assert!(std::mem::size_of::<SIDHashInteger>() <= 16);
+    assert!(std::mem::size_of::<SIDHashInteger>() >= 8);
+    assert!(
+        std::mem::size_of::<SIDHashInteger>()
+            == std::mem::size_of::<Option<NonZeroSIDHashInteger>>()
+    );
+    static TEST_SID_MAP: OnceCell<SIDMap> = OnceCell::new();
+    SID_LOOKUP.set(TEST_SID_MAP.get_or_init(SIDMap::default));
+}
+
 
 const fn first_n_bytes<const N: usize>(input: &[u8]) -> [u8; N] {
     assert!(input.len() >= N);
