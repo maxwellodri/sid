@@ -72,7 +72,7 @@ fn sid_check(reference: &'static SIDMap) {
 /// at hash-time
 #[cfg_attr(
     feature = "bevy",
-    derive(Reflect, FromReflect),
+    derive(Reflect),
     reflect(opaque)
 )]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
