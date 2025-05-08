@@ -1,15 +1,15 @@
 use proc_macro::TokenStream;
+use proc_macro2::{Span as Span2, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
-use syn::{parse_macro_input, visit::Visit, Expr, Item, ItemImpl, ItemMod, LitStr, Ident};
-use proc_macro2::{TokenStream as TokenStream2, Span as Span2};
+use syn::{parse_macro_input, visit::Visit, Expr, Ident, Item, ItemImpl, ItemMod, LitStr};
 
 /// Generates an array of SIDs based on a list of string literals
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use sid::sid_array;
-/// 
+///
 /// let state_ids = sid_array!["Idle", "Walking", "Running", "Jumping"];
 /// for state_id in state_ids {
 ///    println!("State: {}", state_id);
@@ -18,7 +18,7 @@ use proc_macro2::{TokenStream as TokenStream2, Span as Span2};
 #[proc_macro]
 pub fn sid_array(tokens: TokenStream) -> TokenStream {
     let expr = parse_macro_input!(tokens as Expr);
-    
+
     match expr {
         Expr::Array(array) => {
             let elements = array.elems.iter().map(|e| match e {
@@ -27,18 +27,12 @@ pub fn sid_array(tokens: TokenStream) -> TokenStream {
                         let string_value = str_lit.value();
                         quote! { ::sid::SID::from(#string_value) }
                     } else {
-                        syn::Error::new_spanned(
-                            e,
-                            "sid_iter expects string literals",
-                        )
-                        .to_compile_error()
+                        syn::Error::new_spanned(e, "sid_array expects string literals")
+                            .to_compile_error()
                     }
                 }
-                _ => syn::Error::new_spanned(
-                    e,
-                    "sid_iter expects an array of string literals",
-                )
-                .to_compile_error(),
+                _ => syn::Error::new_spanned(e, "sid_array expects an array of string literals")
+                    .to_compile_error(),
             });
             quote! {
                 [#(#elements),*]
@@ -47,7 +41,7 @@ pub fn sid_array(tokens: TokenStream) -> TokenStream {
         }
         _ => syn::Error::new_spanned(
             expr.to_token_stream(),
-            "sid_iter expects an array of string literals",
+            "sid_array expects an array of string literals",
         )
         .to_compile_error()
         .into(),
@@ -69,13 +63,13 @@ impl<'ast> Visit<'ast> for LitStrCollector {
 
 pub(crate) fn sid_iter_internal(attrs: TokenStream, input: TokenStream) -> TokenStream2 {
     let input_clone = input.clone();
-    
+
     if let Ok(impl_block) = syn::parse::<ItemImpl>(input_clone) {
         parse_item_impl(impl_block, attrs)
     } else if let Ok(module) = syn::parse::<ItemMod>(input) {
         parse_mod(module, attrs)
     } else {
-        quote! { 
+        quote! {
             compile_error!("sid_iter needs to annotate either an impl block or a module")
         }
     }
@@ -84,7 +78,10 @@ pub(crate) fn sid_iter_internal(attrs: TokenStream, input: TokenStream) -> Token
 fn parse_item_impl(mut item: ItemImpl, attrs: TokenStream) -> TokenStream2 {
     let mut collector = LitStrCollector(Vec::new());
     collector.visit_item_impl(&item);
-    item.items.push(syn::ImplItem::Verbatim(sid_register_tokens(collector.0, attrs)));
+    item.items.push(syn::ImplItem::Verbatim(sid_register_tokens(
+        collector.0,
+        attrs,
+    )));
     item.to_token_stream()
 }
 
@@ -108,7 +105,7 @@ fn sid_register_tokens(strings: Vec<String>, attrs: TokenStream) -> TokenStream2
     } else {
         return quote! { compile_error!("#attrs cannot be parsed as a valid Rust identifier") };
     };
-    
+
     quote! {
         pub(crate) fn #function_name() {
             let vec: &[&str] = &[
