@@ -103,6 +103,9 @@ enum SIDResult {
     AlreadyRegistered(SID),
 }
 impl SID {
+    pub const fn eq(&self, other: SID) -> bool {
+        self.hash == other.hash
+    }
     #[doc(hidden)]
     pub const fn first_64_bits(&self) -> u64 {
         u64::from_le_bytes(first_n_bytes(&self.hash.to_le_bytes()))
@@ -175,7 +178,14 @@ pub fn sid_try_init(reference: &'static SIDMap) -> Result<(), SIDError> {
     }
     //.expect("SID_LOOKUP can only be set once")
 }
-
+pub fn init() {
+    SID_LOOKUP.get_or_init(|| {
+        let boxed = Box::<SIDMap>::default();
+        let static_ref: &'static _ = Box::leak(boxed);
+        sid_check(static_ref);
+        static_ref
+    });
+}
 pub fn sid_get_or_init() -> &'static SIDMap {
     SID_LOOKUP.get_or_init(|| {
         let boxed = Box::<SIDMap>::default();

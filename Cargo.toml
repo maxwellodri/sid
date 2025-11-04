@@ -11,7 +11,7 @@ keywords = ["string", "id", "hash", "lookup", "game-dev"]
 categories = ["data-structures", "game-development", "performance"]
 
 [dependencies]
-bevy = { version = "0.16", default-features = false, optional = true }
+bevy = { version = "0.17", default-features = false, optional = true }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 once_cell = "1"
