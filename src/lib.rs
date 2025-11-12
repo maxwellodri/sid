@@ -29,7 +29,6 @@ pub use sid_macros::{sid_array, sid_iter};
 #[macro_export]
 macro_rules! sid {
     ($s:literal) => {{
-        // Force type check that it's &'static str
         $crate::inventory::submit! {
             $crate::SIDCollect($s)
         }
@@ -37,13 +36,16 @@ macro_rules! sid {
     }};
 }
 
-#[doc(hidden)]
 pub struct SIDCollect(pub &'static str);
 inventory::collect!(SIDCollect);
 
+impl SIDCollect {
+    pub const fn new(s: &'static str) -> Self {
+        SIDCollect(s)
+    }
+}
 impl SID {
     pub fn register_const_calls() {
-        let _ = sid_lookup();
         for entry in inventory::iter::<SIDCollect> {
             SID::register(entry.0);
         }
@@ -174,8 +176,7 @@ impl SID {
     /// Register a string in sid lookup
     pub fn register(s: impl AsRef<str>) {
         if let SIDResult::AlreadyRegistered(sid) = SID::internal_register(&s) {
-            #[cfg(debug_assertions)]
-            eprintln!("SID ({sid:?}) has already been registered: {}", s.as_ref());
+            tracing::trace!("SID ({sid:?}) has already been registered: {}", s.as_ref());
         }
     }
 }
