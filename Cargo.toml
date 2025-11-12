@@ -19,6 +19,7 @@ flurry = { version = "0.5.0", features = ["serde", "rayon"] }
 ahash = "0.8"
 lhash = { version = "1", features = ["md5"] }
 tracing-log = "0.2"
+inventory = "0.3"
 
 [dependencies.sid-macros]
 version = "0.1.0"

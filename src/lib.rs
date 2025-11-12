@@ -14,6 +14,7 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub use inventory;
 pub use sid_macros::{sid_array, sid_iter};
 
 /// Creates a SID from a string literal at compile time
@@ -28,8 +29,25 @@ pub use sid_macros::{sid_array, sid_iter};
 #[macro_export]
 macro_rules! sid {
     ($s:literal) => {{
+        // Force type check that it's &'static str
+        $crate::inventory::submit! {
+            $crate::SIDCollect($s)
+        }
         $crate::const_sid_from_str($s)
     }};
+}
+
+#[doc(hidden)]
+pub struct SIDCollect(pub &'static str);
+inventory::collect!(SIDCollect);
+
+impl SID {
+    pub fn register_const_calls() {
+        let _ = sid_lookup();
+        for entry in inventory::iter::<SIDCollect> {
+            SID::register(entry.0);
+        }
+    }
 }
 
 // SAFETY / SANITY - NEVER MAKE THIS A USIZE BECAUSE THEN PLATFORMS WOULD HAVE DIFFERENT VALUES FOR
